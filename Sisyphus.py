@@ -94,7 +94,7 @@ class WindowManager(QWidget):
 
         ## user enters command and argument
         self.command_prompt.setMaxLength(100)
-        self.command_prompt.setPlaceholderText("Enter feature with arguments and target")
+        self.command_prompt.setPlaceholderText("feature(argument) 127.0.0.1")
 
         self.newConnection.setMaxLength(30)
 
@@ -128,9 +128,9 @@ class WindowManager(QWidget):
         self.show()
 
     def executeFeature(self):
-        feature = self.command_prompt.text()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        host = ""
+        host = self.command_prompt.text().split(" ")[1]
+        feature = self.command_prompt.text().split(" ")[0]
         s.connect((host, 4444))
         s.send(bytes(feature, encoding="utf8"))
         results = s.recv(1024)
