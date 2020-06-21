@@ -13,3 +13,4 @@ Sisyphus includes a Graphical User Interface (GUI) which is written in python. T
 
 # What does the interface look like?
 ![alt text](https://github.com/D3cl4n/Sisyphus-RAT/blob/master/2020-06-21%2010_59_55-Window.png)
+As you can see, although the interface is basic, it is minimal and provides all the necessary functionality. Here I have run the "ls" command on  my own machine in a simulation of how one would actually remotely manage another computer. At the bottom of the interface, there is an option to compile for linux or windows, depending on the platform of the machine you want to remotely manage.
