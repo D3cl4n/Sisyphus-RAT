@@ -12,3 +12,4 @@ Sisyphus includes a Graphical User Interface (GUI) which is written in python. T
 2) python3 install.py
 
 # What does the interface look like?
+![alt text](https://github.com/D3cl4n/Sisyphus-RAT/blob/master/2020-06-21%2010_59_55-Window.png)
