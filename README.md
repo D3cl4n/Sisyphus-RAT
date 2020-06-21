@@ -10,3 +10,5 @@ Sisyphus includes a Graphical User Interface (GUI) which is written in python. T
 # Install instructions
 1) Clone the repository
 2) python3 install.py
+
+# What does the interface look like?
