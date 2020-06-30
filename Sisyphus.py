@@ -10,6 +10,20 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5.QtGui import *
 
+class ConnectionHandler:
+    def __init__(self, port, ID):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.host = ID
+        self.port = port
+        self.ID = ID
+
+        self.s.connect((self.host, self.port))
+
+    def sendData(self, feature):
+        self.s.send(bytes(feature, encoding="utf8"))
+        self.results = self.s.recv(1024)
+        return self.results.decode("utf8")
+
 class WindowManager(QWidget):
     def __init__(self):
         super().__init__()
@@ -29,7 +43,7 @@ class WindowManager(QWidget):
         self.command_prompt = QLineEdit()
         self.console = QTextEdit(self)
         self.execute = QPushButton("Execute")
-        self.execute.clicked.connect(self.executeFeature)
+        self.execute.clicked.connect(self.executeCommand)
 
         ## compile binary for linux or windows
         self.compileLabel = QLabel()
@@ -122,17 +136,24 @@ class WindowManager(QWidget):
         layout.setAlignment(Qt.AlignLeft)
         layout.setSpacing(5)
 
+        ## list of all connections
+        self.activeConnections = {}
+        self.connectionID  = 0
+
         self.setLayout(layout)
         self.show()
-
-    def executeFeature(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        host = self.command_prompt.text().split(" ")[1]
+        
+    def executeCommand(self):
+        ID = self.command_prompt.text().split(" ")[1]
         feature = self.command_prompt.text().split(" ")[0]
-        s.connect((host, 4444))
-        s.send(bytes(feature, encoding="utf8"))
-        results = s.recv(1024)
-        results = results.decode("utf8")
+
+        if not ID in self.activeConnections:
+            new = ConnectionHandler(4444, ID)
+            self.activeConnections[ID] = new
+
+        currentConnection = self.activeConnections[ID]
+        results = currentConnection.sendData(feature)
+
         self.console.setText(results)
 
     def addConnection(self):
